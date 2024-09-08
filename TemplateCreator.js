@@ -12,6 +12,10 @@ export const TemplateCreator = () => {
         height: 300,
     });
     const [uploadedFile, setUploadedFile] = React.useState(null);
+    const [previewCircle, setPreviewCircle] = React.useState(null);
+    const [isDragging, setIsDragging] = React.useState(false);
+    const [isResizing, setIsResizing] = React.useState(false);
+
     React.useEffect(() => {
         loadTemplates();
     }, []);
@@ -39,28 +43,46 @@ export const TemplateCreator = () => {
         const rect = canvasRef.current.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        setCircle({ x, y, radius: 0 });
-        setIsDrawing(true);
+
+        if (previewCircle) {
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(x - previewCircle.x, 2) +
+                    Math.pow(y - previewCircle.y, 2)
+            );
+            if (Math.abs(distanceFromCenter - previewCircle.radius) < 10) {
+                setIsResizing(true);
+            } else if (distanceFromCenter < previewCircle.radius) {
+                setIsDragging(true);
+            } else {
+                setPreviewCircle({ x, y, radius: 50 });
+            }
+        } else {
+            setPreviewCircle({ x, y, radius: 50 });
+        }
     };
 
     const handleCanvasMouseMove = (e) => {
-        if (isDrawing && circle) {
-            const rect = canvasRef.current.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const dx = x - circle.x;
-            const dy = y - circle.y;
-            const radius = Math.sqrt(dx * dx + dy * dy);
-            setCircle({ ...circle, radius });
-            drawCircle();
+        if (!previewCircle) return;
+
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        if (isDragging) {
+            setPreviewCircle({ ...previewCircle, x, y });
+        } else if (isResizing) {
+            const dx = x - previewCircle.x;
+            const dy = y - previewCircle.y;
+            const newRadius = Math.sqrt(dx * dx + dy * dy);
+            setPreviewCircle({ ...previewCircle, radius: newRadius });
         }
+
+        drawCircle();
     };
 
     const handleCanvasMouseUp = () => {
-        setIsDrawing(false);
-        if (circle) {
-            saveTemplate();
-        }
+        setIsDragging(false);
+        setIsResizing(false);
     };
 
     const drawCircle = () => {
@@ -70,9 +92,15 @@ export const TemplateCreator = () => {
         if (uploadedImage) {
             drawUploadedImage();
         }
-        if (circle) {
+        if (previewCircle) {
             ctx.beginPath();
-            ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2);
+            ctx.arc(
+                previewCircle.x,
+                previewCircle.y,
+                previewCircle.radius,
+                0,
+                Math.PI * 2
+            );
             ctx.strokeStyle = "red";
             ctx.lineWidth = 2;
             ctx.stroke();
@@ -87,7 +115,7 @@ export const TemplateCreator = () => {
     };
 
     const saveTemplate = async () => {
-        if (!uploadedFile || !circle) return;
+        if (!uploadedFile || !previewCircle) return;
 
         const canvas = canvasRef.current;
         const aspectRatio = canvas.width / canvas.height;
@@ -95,16 +123,16 @@ export const TemplateCreator = () => {
         await db.add("templates", {
             originalImage: uploadedFile,
             circle: {
-                x: circle.x / canvas.width,
-                y: circle.y / canvas.height,
-                radius: circle.radius / canvas.width,
+                x: previewCircle.x / canvas.width,
+                y: previewCircle.y / canvas.height,
+                radius: previewCircle.radius / canvas.width,
             },
             aspectRatio,
             originalWidth: uploadedImage.naturalWidth,
             originalHeight: uploadedImage.naturalHeight,
         });
         loadTemplates();
-        setCircle(null);
+        setPreviewCircle(null);
         drawUploadedImage();
     };
 
@@ -162,6 +190,15 @@ export const TemplateCreator = () => {
             onMouseLeave: handleCanvasMouseUp,
         }),
         React.createElement(
+            "button",
+            {
+                onClick: saveTemplate,
+                className: "bg-blue-500 text-white px-4 py-2 rounded mb-4",
+                disabled: !previewCircle,
+            },
+            "Save Template"
+        ),
+        React.createElement(
             "h3",
             { className: "text-xl font-semibold mb-2" },
             "Saved Templates"
@@ -185,7 +222,11 @@ export const TemplateCreator = () => {
                             left: `${template.circle.x * 100}%`,
                             top: `${template.circle.y * 100}%`,
                             width: `${template.circle.radius * 200}%`,
-                            height: `${template.circle.radius * 200}%`,
+                            height: `${
+                                template.circle.radius *
+                                200 *
+                                template.aspectRatio
+                            }%`,
                             transform: "translate(-50%, -50%)",
                         },
                     }),

@@ -311,18 +311,23 @@ export const CircularCrop = () => {
                 ctx.fillStyle = "rgba(0, 0, 0, 0)";
                 ctx.fillRect(0, 0, width, height);
 
-                // Flip the context horizontally
-                ctx.scale(-1, 1);
-
-                // Draw the circular image in the center (flipped)
-                const x = -(width + img.width) / 2;
+                // Draw the circular image in the center
+                const x = (width - img.width) / 2;
                 const y = (height - img.height) / 2;
                 ctx.drawImage(img, x, y);
 
-                // Reset the transformation
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                // Create a new canvas to add metadata
+                const metadataCanvas = document.createElement("canvas");
+                metadataCanvas.width = width;
+                metadataCanvas.height = height;
+                const metadataCtx = metadataCanvas.getContext("2d");
+                metadataCtx.drawImage(canvas, 0, 0);
 
-                canvas.toBlob((blob) => {
+                // Set DPI metadata (300 DPI)
+                const dpi = 300;
+                metadataCtx.setTransform(dpi / 25.4, 0, 0, dpi / 25.4, 0, 0);
+
+                metadataCanvas.toBlob((blob) => {
                     resolve(blob);
                 }, "image/png");
             };

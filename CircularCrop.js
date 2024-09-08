@@ -299,8 +299,8 @@ export const CircularCrop = () => {
                 const ctx = canvas.getContext("2d");
 
                 // Calculate dimensions
-                const targetRatio = 13 / 10.1;
-                const verticalRatio = 19 / 10.1;
+                const targetRatio = 13 / 10.5;
+                const verticalRatio = 19 / 10.5;
                 const width = img.width * targetRatio;
                 const height = img.width * verticalRatio;
 

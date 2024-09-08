@@ -311,10 +311,16 @@ export const CircularCrop = () => {
                 ctx.fillStyle = "rgba(0, 0, 0, 0)";
                 ctx.fillRect(0, 0, width, height);
 
-                // Draw the circular image in the center
-                const x = (width - img.width) / 2;
+                // Flip the context horizontally
+                ctx.scale(-1, 1);
+
+                // Draw the circular image in the center (flipped)
+                const x = -(width + img.width) / 2;
                 const y = (height - img.height) / 2;
                 ctx.drawImage(img, x, y);
+
+                // Reset the transformation
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
 
                 canvas.toBlob((blob) => {
                     resolve(blob);

@@ -20,6 +20,7 @@ export const CircularCrop = () => {
     const [apiKey, setApiKey] = React.useState(
         () => localStorage.getItem("etsyApiKey") || ""
     );
+    const [printableImageBlob, setPrintableImageBlob] = React.useState(null);
 
     React.useEffect(() => {
         if (image) {
@@ -290,6 +291,57 @@ export const CircularCrop = () => {
         setFittedImages(results);
     };
 
+    const createPrintableImage = async (croppedImageBlob) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                // Calculate dimensions
+                const targetRatio = 13 / 10.1;
+                const verticalRatio = 19 / 10.1;
+                const width = img.width * targetRatio;
+                const height = img.width * verticalRatio;
+
+                canvas.width = width;
+                canvas.height = height;
+
+                // Fill with transparent background
+                ctx.fillStyle = "rgba(0, 0, 0, 0)";
+                ctx.fillRect(0, 0, width, height);
+
+                // Draw the circular image in the center
+                const x = (width - img.width) / 2;
+                const y = (height - img.height) / 2;
+                ctx.drawImage(img, x, y);
+
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, "image/png");
+            };
+            img.src = URL.createObjectURL(croppedImageBlob);
+        });
+    };
+
+    const createPrintableVersion = async () => {
+        if (croppedImageBlob) {
+            const printableBlob = await createPrintableImage(croppedImageBlob);
+            setPrintableImageBlob(printableBlob);
+        }
+    };
+
+    const downloadPrintableImage = () => {
+        if (printableImageBlob) {
+            const url = URL.createObjectURL(printableImageBlob);
+            const link = document.createElement("a");
+            link.download = "printable-image.png";
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    };
+
     const handleSaveDownloadAndSubmit = async () => {
         if (croppedImageBlob && fittedImages.length > 0) {
             const zip = await saveAndDownloadImages(
@@ -448,6 +500,25 @@ export const CircularCrop = () => {
                     },
                     "Process Cropped Image"
                 ),
+                React.createElement(
+                    "button",
+                    {
+                        onClick: createPrintableVersion,
+                        className:
+                            "bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4",
+                    },
+                    "Create Printable Version"
+                ),
+                printableImageBlob &&
+                    React.createElement(
+                        "button",
+                        {
+                            onClick: downloadPrintableImage,
+                            className:
+                                "bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4",
+                        },
+                        "Download Printable Image"
+                    ),
                 fittedImages.length > 0
                     ? React.createElement(
                           "button",

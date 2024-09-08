@@ -8,36 +8,29 @@ import filesaver from "file-saver";
 const { saveAs } = filesaver;
 // ... existing code ...
 
-export async function saveAndDownloadImages(croppedImageBlob, fittedImages) {
-    // Open the database
-    const db = await openDB("ImageTemplateDB", 2, {
-        upgrade(db) {
-            if (!db.objectStoreNames.contains("processedImages")) {
-                db.createObjectStore("processedImages", {
-                    keyPath: "id",
-                    autoIncrement: true,
-                });
-            }
-        },
-    });
+export async function saveAndDownloadImages(
+    croppedImageBlob,
+    fittedImages,
+    imageSetName
+) {
     // Create a new ZIP file
     const zip = new JSZip();
-
-    // Add the original cropped image to the ZIP and database
-    zip.file("original_crop.png", croppedImageBlob);
+    const originalFileName = imageSetName
+        ? `${imageSetName}_original_crop.png`
+        : "original_crop.png";
+    zip.file(originalFileName, croppedImageBlob);
 
     // Add each fitted image to the ZIP and database
     for (let i = 0; i < fittedImages.length; i++) {
         const { templateId, resultImage } = fittedImages[i];
-        const fileName = `fitted_image_${templateId}.png`;
+        const fileName = imageSetName
+            ? `${imageSetName}_fitted_image_${templateId}.png`
+            : `fitted_image_${templateId}.png`;
         zip.file(fileName, resultImage);
     }
 
     // Generate the ZIP file
     const zipBlob = await zip.generateAsync({ type: "blob" });
-
-    // Save the ZIP file
-    saveAs(zipBlob, "processed_images.zip");
 
     // Close the transaction
     // await tx.done;

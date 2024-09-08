@@ -21,6 +21,7 @@ export const CircularCrop = () => {
         () => localStorage.getItem("etsyApiKey") || ""
     );
     const [printableImageBlob, setPrintableImageBlob] = React.useState(null);
+    const [imageSetName, setImageSetName] = React.useState("");
 
     React.useEffect(() => {
         if (image) {
@@ -191,60 +192,6 @@ export const CircularCrop = () => {
         setZoom(parseFloat(e.target.value));
     };
 
-    // ... existing code ...
-
-    const downloadCroppedImage = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
-        canvas.width = cropSize;
-        canvas.height = cropSize;
-
-        // Create circular clipping path
-        ctx.beginPath();
-        ctx.arc(cropSize / 2, cropSize / 2, cropSize / 2, 0, Math.PI * 2);
-        ctx.clip();
-
-        // Calculate the crop area in the original image coordinates
-        const scale = cropSize / (canvasRef.current.width / zoom);
-        const sourceX =
-            image.naturalWidth / 2 -
-            cropSize / (2 * zoom) -
-            (crop.x * scale) / zoom;
-        const sourceY =
-            image.naturalHeight / 2 -
-            cropSize / (2 * zoom) -
-            (crop.y * scale) / zoom;
-        const sourceSize = cropSize / zoom;
-
-        // Draw the cropped image at full resolution
-        ctx.drawImage(
-            image,
-            sourceX,
-            sourceY,
-            sourceSize,
-            sourceSize,
-            0,
-            0,
-            cropSize,
-            cropSize
-        );
-
-        // Create download link
-        canvas.toBlob(
-            (blob) => {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.download = "cropped-image.png";
-                link.href = url;
-                link.click();
-                URL.revokeObjectURL(url);
-            },
-            "image/png",
-            1
-        ); // Use maximum quality for PNG
-    };
-
     const processCroppedImage = async () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
@@ -342,11 +289,18 @@ export const CircularCrop = () => {
         }
     };
 
+    const handleImageSetNameChange = (e) => {
+        setImageSetName(e.target.value);
+    };
+
     const downloadPrintableImage = () => {
         if (printableImageBlob) {
+            const fileName = imageSetName
+                ? `${imageSetName}_printable.png`
+                : "printable-image.png";
             const url = URL.createObjectURL(printableImageBlob);
             const link = document.createElement("a");
-            link.download = "printable-image.png";
+            link.download = fileName;
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
@@ -396,12 +350,16 @@ export const CircularCrop = () => {
             // Save and download images
             const zip = await saveAndDownloadImages(
                 croppedImageBlob,
-                fittedImages
+                fittedImages,
+                imageSetName
             );
 
+            const fileName = imageSetName
+                ? `${imageSetName}_processed_images.zip`
+                : "processed_images.zip";
             const url = URL.createObjectURL(zip);
             const link = document.createElement("a");
-            link.download = "processed_images.zip";
+            link.download = fileName;
             link.href = url;
             link.click();
             URL.revokeObjectURL(url);
@@ -451,6 +409,13 @@ export const CircularCrop = () => {
             accept: "image/*",
             onChange: onSelectFile,
             className: "mb-4",
+        }),
+        React.createElement("input", {
+            type: "text",
+            value: imageSetName,
+            onChange: handleImageSetNameChange,
+            placeholder: "Enter image set name",
+            className: "w-full p-2 mb-4 border rounded",
         }),
         React.createElement("textarea", {
             value: description,

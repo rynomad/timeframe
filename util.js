@@ -45,6 +45,8 @@ export async function fitCroppedImageToTemplates(croppedImageBlob) {
     const templates = await db.getAll("templates");
     const croppedImage = await createImageFromBlob(croppedImageBlob);
 
+    const MAX_DIMENSION = 1200; // Maximum width or height for the scaled image
+
     const results = await Promise.all(
         templates.map(async (template) => {
             const templateImage = await createImageFromFile(
@@ -89,9 +91,20 @@ export async function fitCroppedImageToTemplates(croppedImageBlob) {
 
             ctx.restore();
 
+            // Scale down the image if it exceeds MAX_DIMENSION
+            let finalCanvas = canvas;
+            if (canvas.width > MAX_DIMENSION || canvas.height > MAX_DIMENSION) {
+                const scaleFactor = MAX_DIMENSION / Math.max(canvas.width, canvas.height);
+                finalCanvas = document.createElement("canvas");
+                finalCanvas.width = canvas.width * scaleFactor;
+                finalCanvas.height = canvas.height * scaleFactor;
+                const finalCtx = finalCanvas.getContext("2d");
+                finalCtx.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
+            }
+
             // Convert the canvas to a blob
             const resultBlob = await new Promise((resolve) =>
-                canvas.toBlob(resolve, "image/png")
+                finalCanvas.toBlob(resolve, "image/png")
             );
 
             return {
